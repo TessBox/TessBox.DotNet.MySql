@@ -1,0 +1,27 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net7.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <Authors>davil74</Authors>
+    <Product>TessBox.DotNet.MySql</Product>
+    <Copyright>Copyright © davil74 2023</Copyright>
+    <PackageProjectUrl>https://github.com/davil74/TessBox.DotNet.MySql</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType> 
+    <RepositoryUrl>https://github.com/davil74/TessBox.DotNet.MySql</RepositoryUrl>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>Extensions for a MySqlConnector. Add Migration</Description>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="icon.png" Pack="true" PackagePath="" />
+    <None Include="../README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="MySqlConnector" Version="2.2.6" />
+    <PackageReference Include="Dapper" Version="2.0.123" />
+    <PackageReference Include="Dapper.Contrib" Version="2.0.78" />
+  </ItemGroup>
+</Project>
