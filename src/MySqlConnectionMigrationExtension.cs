@@ -17,11 +17,11 @@ public static class MySqlConnectionMigrationExtension
     public static async Task<int> GetVersionAsync(this MySqlConnection connection)
     {
         // check if table exist
-        var tableType = await connection.GetTableTypeAsync(connection.Database, "version");
+        var tableType = await connection.GetTableTypeAsync(connection.Database, "sys_version");
         if (tableType == TableType.no_exist)
             return 0;
 
-        var version = await connection.QueryAsync<int>("SELECT max(version) FROM auth.version");
+        var version = await connection.QueryAsync<int>("SELECT max(version) FROM sys_version");
         return version.FirstOrDefault();
     }
 
