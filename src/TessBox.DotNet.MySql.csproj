@@ -12,11 +12,12 @@
     <RepositoryUrl>https://github.com/davil74/TessBox.DotNet.MySql</RepositoryUrl>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <Description>Extensions for a MySqlConnector. Add Migration</Description>
-    <PackageIcon>icon.png</PackageIcon>
+    <PackageIcon>logo.png</PackageIcon>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageVersion>$([System.DateTime]::Now.ToString("yy.MM.dd.HHmmss"))</PackageVersion>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="icon.png" Pack="true" PackagePath="" />
+    <None Include="logo.png" Pack="true" PackagePath="" />
     <None Include="../README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
   <ItemGroup>

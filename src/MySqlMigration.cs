@@ -3,7 +3,7 @@ using System.Text;
 
 namespace TessBox.DotNet.MySql;
 
-public class MigrationItem
+internal class MigrationItem
 {
     public MigrationItem(int version, string filePath)
     {
@@ -16,10 +16,13 @@ public class MigrationItem
     public string FilePath { get; }
 }
 
-public sealed class MySqlMigration
+internal sealed class MySqlMigration
 {
-    public MySqlMigration()
+    private readonly Assembly _scriptAssembly;
+
+    public MySqlMigration(Assembly scriptAssembly)
     {
+        _scriptAssembly = scriptAssembly;
         Migrations = GetMigrationList();
         Version = Migrations.LastOrDefault()?.Version ?? 0;
     }
@@ -36,17 +39,15 @@ public sealed class MySqlMigration
 
         foreach (var item in files)
         {
-            var assembly = Assembly.GetExecutingAssembly();
-            result.AppendLine(await assembly.ReadResourceAsync(item.FilePath));
+            result.AppendLine(await _scriptAssembly.ReadResourceAsync(item.FilePath));
         }
 
         return result.ToString();
     }
 
-    private static IEnumerable<MigrationItem> GetMigrationList()
+    private IEnumerable<MigrationItem> GetMigrationList()
     {
-        var assembly = Assembly.GetExecutingAssembly();
-        var scriptList = assembly.GetManifestResourceNames().Where(t => t.EndsWith(".sql"));
+        var scriptList = _scriptAssembly.GetManifestResourceNames().Where(t => t.EndsWith(".sql"));
         var result = new List<MigrationItem>();
 
         foreach (var script in scriptList)

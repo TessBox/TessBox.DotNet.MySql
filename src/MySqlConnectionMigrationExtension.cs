@@ -1,3 +1,4 @@
+using System.Reflection;
 using Dapper;
 using MySqlConnector;
 
@@ -24,7 +25,15 @@ public static class MySqlConnectionMigrationExtension
         return version.FirstOrDefault();
     }
 
-    public static async Task<int> ProgressMigrationAsync(this MySqlConnection connection)
+    public static Task<int> ProgressMigrationAsync(this MySqlConnection connection)
+    {
+        return connection.ProgressMigrationAsync(Assembly.GetCallingAssembly());
+    }
+
+    public static async Task<int> ProgressMigrationAsync(
+        this MySqlConnection connection,
+        Assembly scriptsAssembly
+    )
     {
         await connection.EnsureIsOpenedAsync();
 
@@ -32,7 +41,7 @@ public static class MySqlConnectionMigrationExtension
         var version = await connection.GetVersionAsync();
 
         // migration
-        var migration = new MySqlMigration();
+        var migration = new MySqlMigration(scriptsAssembly);
         if (migration.Version <= version)
             return version;
 
@@ -47,7 +56,7 @@ public static class MySqlConnectionMigrationExtension
             {
                 await connection.ExecuteAsync(
                     @"
- CREATE TABLE IF NOT EXISTS auth.version (
+ CREATE TABLE IF NOT EXISTS sys_version (
     version INT,
     creationDate DATETIME DEFAULT CURRENT_TIMESTAMP
 );
@@ -57,7 +66,7 @@ public static class MySqlConnectionMigrationExtension
             }
 
             await connection.ExecuteAsync(
-                $"INSERT INTO auth.version(version) VALUES ({migration.Version})",
+                $"INSERT INTO sys_version(version) VALUES ({migration.Version})",
                 transaction: transaction
             );
 

@@ -1,0 +1,2 @@
+CREATE TABLE
+    IF NOT EXISTS TestTable(Id SERIAL, Caption VARCHAR(100));

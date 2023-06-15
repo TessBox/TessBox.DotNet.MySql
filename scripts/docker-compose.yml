@@ -1,0 +1,10 @@
+version: '3.4'
+
+name: "mysql_test"
+
+services:
+  auth_database_test:
+    image: mysql/database/test
+    container_name: mysql_database_test
+    ports:
+      - "3308:3308"
