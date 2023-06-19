@@ -1,14 +1,17 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using MySqlConnector;
-using TessBox.DotNet.MySql;
 using Xunit.Abstractions;
 using XUnit.Extensions.IntegrationTests;
+using TessBox.DotNet.MySql;
 
 namespace TessBox.MySql.Extensions.Tests;
 
 public class MigrationsTests : IntegrationTest<Context>
 {
+    private const string ConnectionString =
+        "server=localhost;port=3308;uid=root;pwd=123456;database=mysql_test";
+
     public MigrationsTests(ITestOutputHelper testOutputHelper, Context context)
         : base(testOutputHelper, context) { }
 
@@ -16,12 +19,10 @@ public class MigrationsTests : IntegrationTest<Context>
     public async Task ProgressMigrationAsync_First()
     {
         // arrange
-        var Connection = new MySqlConnection(
-            "server=localhost;port=3308;uid=root;pwd=123456;database=mysql_test"
-        );
+        var Connection = new MySqlMigration(ConnectionString);
 
         // act
-        var version = await Connection.ProgressMigrationAsync(typeof(MigrationsTests).Assembly);
+        var version = await Connection.ProgressMigrationAsync();
 
         // assert
         Assert.Equal(1, version);
@@ -31,12 +32,10 @@ public class MigrationsTests : IntegrationTest<Context>
     public async Task ProgressMigrationAsync_Again_Nothing()
     {
         // arrange
-        var Connection = new MySqlConnection(
-            "server=localhost;port=3308;uid=root;pwd=123456;database=mysql_test"
-        );
+        var Connection = new MySqlMigration(ConnectionString);
 
         // act
-        var version = await Connection.ProgressMigrationAsync(typeof(MigrationsTests).Assembly);
+        var version = await Connection.ProgressMigrationAsync();
 
         // assert
         Assert.Equal(1, version);

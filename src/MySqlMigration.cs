@@ -1,80 +1,95 @@
 using System.Reflection;
-using System.Text;
+using Dapper;
+using MySqlConnector;
 
 namespace TessBox.DotNet.MySql;
 
-internal class MigrationItem
+public sealed class MySqlMigration
 {
-    public MigrationItem(int version, string filePath)
+    private readonly MigrationItemProvider _migrationItemProvider;
+
+    private readonly MySqlConnection _connection;
+
+    private readonly string _migrationName;
+
+    public MySqlMigration(string connectionString)
+        : this(Assembly.GetCallingAssembly(), connectionString) { }
+
+    public MySqlMigration(Assembly scriptAssembly, string connectionString)
     {
-        Version = version;
-        FilePath = filePath;
+        _migrationItemProvider = new MigrationItemProvider(scriptAssembly);
+        _migrationName =
+            scriptAssembly.GetName().Name ?? throw new Exception("Migration name not define");
+        _connection = new MySqlConnection(connectionString);
     }
 
-    public int Version { get; }
-
-    public string FilePath { get; }
-}
-
-internal sealed class MySqlMigration
-{
-    private readonly Assembly _scriptAssembly;
-
-    public MySqlMigration(Assembly scriptAssembly)
+    public async Task<int> GetVersionAsync()
     {
-        _scriptAssembly = scriptAssembly;
-        Migrations = GetMigrationList();
-        Version = Migrations.LastOrDefault()?.Version ?? 0;
+        // check if table exist
+        var tableType = await _connection.GetTableTypeAsync(_connection.Database, "sys_version");
+        if (tableType == TableType.no_exist)
+            return 0;
+
+        var parameters = new Dictionary<string, object> { { "@name", _migrationName } };
+        var version = await _connection.QueryAsync<int>(
+            "SELECT max(version) FROM sys_version WHERE name=@name",
+            parameters
+        );
+
+        return version.FirstOrDefault();
     }
 
-    public IEnumerable<MigrationItem> Migrations { get; }
-
-    public int Version { get; }
-
-    public async Task<string> GetScriptFromAsync(int version)
+    public async Task<int> ProgressMigrationAsync()
     {
-        var files = Migrations.Where(t => t.Version > version);
+        await _connection.EnsureIsOpenedAsync();
 
-        var result = new StringBuilder();
+        // check database version
+        var version = await GetVersionAsync();
 
-        foreach (var item in files)
+        // migration
+        if (_migrationItemProvider.Version <= version)
+            return version;
+
+        var transaction = await _connection.BeginTransactionAsync();
+        try
         {
-            result.AppendLine(await _scriptAssembly.ReadResourceAsync(item.FilePath));
-        }
-
-        return result.ToString();
-    }
-
-    private IEnumerable<MigrationItem> GetMigrationList()
-    {
-        var scriptList = _scriptAssembly.GetManifestResourceNames().Where(t => t.EndsWith(".sql"));
-        var result = new List<MigrationItem>();
-
-        foreach (var script in scriptList)
-        {
-            var item = ReadMigrationItem(script);
-            if (item != null)
+            await _connection.ExecuteAsync(
+                await _migrationItemProvider.GetScriptFromAsync(version),
+                transaction: transaction
+            );
+            if (version == 0)
             {
-                result.Add(item);
+                await _connection.ExecuteAsync(
+                    @"
+ CREATE TABLE IF NOT EXISTS sys_version (
+    name VARCHAR(100),
+    version INT,
+    creationDate DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+",
+                    transaction: transaction
+                );
             }
+
+            var parameters = new Dictionary<string, object>
+            {
+                { "@name", _migrationName },
+                { "@version", _migrationItemProvider.Version }
+            };
+            await _connection.ExecuteAsync(
+                $"INSERT INTO sys_version(name, version) VALUES (@name, @version )",
+                parameters,
+                transaction: transaction
+            );
+
+            await transaction.CommitAsync();
+
+            return _migrationItemProvider.Version;
         }
-        return result.OrderBy(t => t.Version);
-    }
-
-    private static MigrationItem? ReadMigrationItem(string filepath)
-    {
-        //
-
-        var separatorIndex = filepath.IndexOf('_');
-        if (separatorIndex < 0)
-            return null;
-
-        // extract version from namespace.001_init.sql
-        var strVersion = filepath[..separatorIndex];
-        strVersion = strVersion[(strVersion.LastIndexOf('.') + 1)..];
-        if (!int.TryParse(strVersion, out int version))
-            return null;
-
-        return new MigrationItem(version, filepath);
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
     }
 }

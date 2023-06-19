@@ -4,6 +4,14 @@ using MySqlConnector;
 
 namespace TessBox.DotNet.MySql;
 
+public enum TableType
+{
+    no_exist,
+    table,
+    view,
+    temp
+}
+
 public static class MySqlConnectionExtension
 {
     public static async Task EnsureIsOpenedAsync(this MySqlConnection connection)
