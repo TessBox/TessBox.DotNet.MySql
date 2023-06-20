@@ -1,6 +1,5 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using MySqlConnector;
 using Xunit.Abstractions;
 using XUnit.Extensions.IntegrationTests;
 using TessBox.DotNet.MySql;

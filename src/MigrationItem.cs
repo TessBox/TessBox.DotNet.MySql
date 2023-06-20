@@ -45,6 +45,21 @@ internal sealed class MigrationItemProvider
         return result.ToString();
     }
 
+    public async Task<string> GetScriptAsync(string name)
+    {
+        var scriptList = _scriptAssembly
+            .GetManifestResourceNames()
+            .Where(t => t.EndsWith("." + name, StringComparison.OrdinalIgnoreCase));
+        if (!scriptList.Any())
+            throw new Exception("Script not found");
+
+        if (scriptList.Count() > 1)
+            throw new Exception("The script is not unique");
+
+        var content = await _scriptAssembly.ReadResourceAsync(scriptList.First());
+        return content;
+    }
+
     private IEnumerable<MigrationItem> GetMigrationList()
     {
         var scriptList = _scriptAssembly.GetManifestResourceNames().Where(t => t.EndsWith(".sql"));

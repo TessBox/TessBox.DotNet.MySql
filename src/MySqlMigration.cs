@@ -92,4 +92,22 @@ public sealed class MySqlMigration
             throw;
         }
     }
+
+    public async Task RunScript(string name)
+    {
+        await _connection.EnsureIsOpenedAsync();
+
+        var script = await _migrationItemProvider.GetScriptAsync(name);
+        var transaction = await _connection.BeginTransactionAsync();
+        try
+        {
+            await _connection.ExecuteAsync(script, transaction);
+            await transaction.CommitAsync();
+        }
+        catch (Exception)
+        {
+            await transaction.RollbackAsync();
+            throw;
+        }
+    }
 }
