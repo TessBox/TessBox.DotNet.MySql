@@ -39,6 +39,19 @@ public class MigrationsTests : IntegrationTest<Context>
         // assert
         Assert.Equal(1, version);
     }
+
+    [Fact, TestPriority(3)]
+    public async Task ProgressMigrationAsync_Other_name()
+    {
+        // arrange
+        var connection = new MySqlMigration(ConnectionString, "Migration2");
+
+        // act
+        var version = await connection.GetVersionAsync();
+
+        // assert
+        Assert.Equal(0, version);
+    }
 }
 
 public class Context : TestContext

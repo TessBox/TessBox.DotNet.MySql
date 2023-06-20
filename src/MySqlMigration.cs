@@ -1,4 +1,5 @@
 using System.Reflection;
+using System.Transactions;
 using Dapper;
 using MySqlConnector;
 
@@ -16,27 +17,35 @@ public sealed class MySqlMigration
         : this(Assembly.GetCallingAssembly(), connectionString) { }
 
     public MySqlMigration(Assembly scriptAssembly, string connectionString)
+        : this(
+            scriptAssembly,
+            connectionString,
+            scriptAssembly.GetName().Name ?? throw new Exception("Migration name not define")
+        ) { }
+
+    public MySqlMigration(string connectionString, string name)
+        : this(Assembly.GetCallingAssembly(), connectionString, name) { }
+
+    public MySqlMigration(Assembly scriptAssembly, string connectionString, string name)
     {
         _migrationItemProvider = new MigrationItemProvider(scriptAssembly);
-        _migrationName =
-            scriptAssembly.GetName().Name ?? throw new Exception("Migration name not define");
+        _migrationName = name;
         _connection = new MySqlConnection(connectionString);
     }
 
     public async Task<int> GetVersionAsync()
     {
         // check if table exist
-        var tableType = await _connection.GetTableTypeAsync(_connection.Database, "sys_version");
-        if (tableType == TableType.no_exist)
+        if (!await SysVersionTableExist())
             return 0;
 
         var parameters = new Dictionary<string, object> { { "@name", _migrationName } };
-        var version = await _connection.QueryAsync<int>(
+        var version = await _connection.QueryAsync<int?>(
             "SELECT max(version) FROM sys_version WHERE name=@name",
             parameters
         );
 
-        return version.FirstOrDefault();
+        return version.FirstOrDefault() ?? 0;
     }
 
     public async Task<int> ProgressMigrationAsync()
@@ -50,27 +59,20 @@ public sealed class MySqlMigration
         if (_migrationItemProvider.Version <= version)
             return version;
 
+        // ensure version table exist
+        await EnsureSysVersionTableExist();
+
+        // run migration
         var transaction = await _connection.BeginTransactionAsync();
         try
         {
+            // execute script
             await _connection.ExecuteAsync(
                 await _migrationItemProvider.GetScriptFromAsync(version),
                 transaction: transaction
             );
-            if (version == 0)
-            {
-                await _connection.ExecuteAsync(
-                    @"
- CREATE TABLE IF NOT EXISTS sys_version (
-    name VARCHAR(100),
-    version INT,
-    creationDate DATETIME DEFAULT CURRENT_TIMESTAMP
-);
-",
-                    transaction: transaction
-                );
-            }
 
+            // update version
             var parameters = new Dictionary<string, object>
             {
                 { "@name", _migrationName },
@@ -109,5 +111,28 @@ public sealed class MySqlMigration
             await transaction.RollbackAsync();
             throw;
         }
+    }
+
+    private async Task<bool> SysVersionTableExist()
+    {
+        // check if table exist
+        var tableType = await _connection.GetTableTypeAsync(_connection.Database, "sys_version");
+        return tableType == TableType.table;
+    }
+
+    private async Task EnsureSysVersionTableExist()
+    {
+        if (await SysVersionTableExist())
+            return;
+
+        await _connection.ExecuteAsync(
+            @"
+ CREATE TABLE IF NOT EXISTS sys_version (
+    name VARCHAR(100),
+    version INT,
+    creationDate DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+"
+        );
     }
 }
