@@ -52,6 +52,19 @@ public class MigrationsTests : IntegrationTest<Context>
         // assert
         Assert.Equal(0, version);
     }
+
+    [Fact, TestPriority(4)]
+    public async Task ProgressMigrationAsync_Other_Script()
+    {
+        // arrange
+        var connection = new MySqlMigration(ConnectionString);
+
+        // act
+        await connection.RunScriptAsync("fake.sql");
+
+        // assert
+        Assert.True(true);
+    }
 }
 
 public class Context : TestContext
@@ -59,7 +72,8 @@ public class Context : TestContext
     protected override void AddServices(
         IServiceCollection services,
         IConfiguration? configuration
-    ) { }
+    )
+    { }
 
     protected override IEnumerable<string> GetSettingsFiles()
     {

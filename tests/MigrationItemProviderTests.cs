@@ -26,6 +26,6 @@ public class MigrationItemProviderTests
 
         // assert
         Assert.Single(provider.Migrations);
-        Assert.Equal("I M A CUSTOM SQL SCRIPT ", content);
+        Assert.Equal("INSERT INTO TestTable(Caption) VALUES ('Test') ", content);
     }
 }

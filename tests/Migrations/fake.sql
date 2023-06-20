@@ -1,1 +1,1 @@
-I M A CUSTOM SQL SCRIPT 
+INSERT INTO TestTable(Caption) VALUES ('Test') 
